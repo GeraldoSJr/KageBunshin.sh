@@ -15,7 +15,9 @@ type NodeMap struct {
 }
 
 // ScaleUp calculates the resources required to schedule pending pods and sends NodeMap objects via a channel
-func ScaleUp(ctx context.Context, clientset *kubernetes.Clientset, metricsClient *versioned.Clientset, nodeChan chan NodeMap) {
+func ScaleUp(ctx context.Context, clientset *kubernetes.Clientset, metricsClient *versioned.Clientset)[]NodeMap {
+    var nodeList []NodeMap
+
     pendingPods := pkg.PendingPods(clientset, ctx)
 
     podMetrics, err := pkg.PodMetrics(pendingPods)
@@ -39,7 +41,8 @@ func ScaleUp(ctx context.Context, clientset *kubernetes.Clientset, metricsClient
         newMemoryTotal.Add(podMemoryNeed)
 
         if newCpuTotal.Cmp(resource.MustParse("2")) > 0 || newMemoryTotal.Cmp(resource.MustParse("2Gi")) > 0 {
-            nodeChan <- nodeMetrics
+            nodeList = append(nodeList, nodeMetrics)
+
 
             nodeMetrics = NodeMap{
                 CpuNeed:    podCpuNeed.DeepCopy(),
@@ -52,10 +55,10 @@ func ScaleUp(ctx context.Context, clientset *kubernetes.Clientset, metricsClient
     }
 
     if nodeMetrics.CpuNeed.Cmp(resource.MustParse("0")) > 0 || nodeMetrics.MemoryNeed.Cmp(resource.MustParse("0Gi")) > 0 {
-        nodeChan <- nodeMetrics
+        nodeList = append(nodeList, nodeMetrics)
     }
 
-    close(nodeChan)
+    return nodeList
 }
 
 

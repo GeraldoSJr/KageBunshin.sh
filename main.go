@@ -7,8 +7,8 @@ import (
     "path/filepath"
 
     pkg "github.com/GeraldoSJr/KageBunshin.sh/pkg" // Assuming nodeMetrics function is in "pkg" package
+    "github.com/GeraldoSJr/KageBunshin.sh/pkg/provision"
     "k8s.io/apimachinery/pkg/api/resource"
-    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
     "k8s.io/client-go/kubernetes"
     "k8s.io/client-go/rest"
     "k8s.io/client-go/tools/clientcmd"
@@ -18,6 +18,11 @@ import (
 
 const cpuThreshold = "800m"
 const memoryThreshold = "2Gi"
+
+type NodeMap struct {
+    CpuNeed resource.Quantity
+    MemoryNeed resource.Quantity
+}
 
 func main() {
     // Step 1: Create Kubernetes and Metrics clients
@@ -52,18 +57,10 @@ func main() {
         }
     }
 
-    // Step 5: Get pod list and check for any pending pods
-    pods, err := clientset.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
-    if err != nil {
-        log.Fatalf("Error retrieving pods: %v", err)
-    }
-    for _, pod := range pods.Items {
-        if pod.Status.Phase == "Pending" {
-            fmt.Printf("\nPod %s is in Pending state. Scaling up the node.\n", pod.Name)
-        }
-    }
-
     fmt.Println("==== End of Metrics ====")
+
+    nodeList := provision.ScaleUp(ctx, clientset, metricsClient)
+    fmt.Print(nodeList[0])
 }
 
 func resourceMustParse(value string) *resource.Quantity {
