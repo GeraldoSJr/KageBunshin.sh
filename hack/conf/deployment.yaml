@@ -5,7 +5,7 @@ metadata:
   labels:
     app: medium-app
 spec:
-  replicas: 2
+  replicas: 8
   selector:
     matchLabels:
       app: medium-app
